@@ -21,34 +21,26 @@
     const status = document.querySelector('#status')
         , queueStatus = document.querySelector('#queue')
 
-    const bluetoothDevices = new BluetoothDevices([
-      {
-        filters: [{
-          namePrefix: "toy_",
-          services: ['4fafc201-1fb5-459e-8fcc-c5c9c331914f']
-        }]
-      }
-    ])
+    const device = {
+      filters: [{
+        namePrefix: "toy_",
+        services: ['4fafc201-1fb5-459e-8fcc-c5c9c331914f']
+      }]
+    }
 
-    bluetoothDevices.status(connect => {
-      console.log(connect)
-      status.innerHTML = 'Device: ' + (connect[0]  ? 'connect' : 'disconnect')
-    })
+    const queue = new Queue()
+        , bluetoothDevices = new BluetoothDevices([device])
 
-    window.callDevice = () => { /* wait connect */ return false }
+    let callDevice = () => { /* wait connect */ return false }
 
     bluetoothDevices.connect(async (device, filter, reconnect) => {
       if (device) {
-        console.log(filter + ' - ' + device.name)
-
         const server = await device.gatt.connect()
             , service = await server.getPrimaryService('4fafc201-1fb5-459e-8fcc-c5c9c331914f')
             , characteristic = await service.getCharacteristic('beb5483e-36e1-4688-b7f5-ea07361b26a7')
 
         const gattserverdisconnectedHandler = () => {
           device.removeEventListener('gattserverdisconnected', gattserverdisconnectedHandler)
-
-          console.log('disconnected ' + filter + ' - ' + device.name)
           reconnect(filter)
         }
 
@@ -69,42 +61,44 @@
           }
         }
       } else{
-        console.log('not found device ' + filter)
         reconnect(filter)
       }
+    })
+
+    bluetoothDevices.status(connect => {
+      status.innerHTML = 'Device: ' + (connect[0]  ? 'connect' : 'disconnect')
     })
 
     // bluetoothDevices.disconnect()
     // bluetoothDevices.reconnect()
 
-    const pattern_more = async (tip) => {
-      for (let i = 1; i < 11; i++) {
-        await callDevice(i)
-        await sleep(tip * 30)
+    const patterns = [
+      async () => {
+        await callDevice(100)
+        await sleep(5000)
+        await callDevice(0)
+        await sleep(5000)
+      },
+      async (tip) => {
+        for (let i = 1; i < 11; i++) {
+          await callDevice(i)
+          await sleep(tip * 30)
+        }
+        for (let i = 10; i > -1; i--) {
+          await callDevice(i)
+          await sleep(tip * 30)
+        }
       }
-      for (let i = 10; i > -1; i--) {
-        await callDevice(i)
-        await sleep(tip * 30)
-      }
-    }
-
-    const pattern_easy = async () => {
-      await callDevice(100)
-      await sleep(5000)
-      await callDevice(0)
-      await sleep(5000)
-    }
-
-    const queue = new Queue()
+    ]
 
     queue.executer(async (data, next) => {
       if (data === 1) {
-        await pattern_easy()
+        await patterns[0]()
         next()
       }
 
       if (data > 1) {
-        await pattern_more(data)
+        await patterns[1](data)
         next()
       }
     })
