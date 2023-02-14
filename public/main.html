@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="ie=edge">
+  <script src='https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.5.4/socket.io.js' integrity='sha512-YeeA/Qxn5hYdkukScTCNNOhTrv1C2RubAGButJ1rmgQwZf/HdRaCGl+JAVkqsqaNRaYNHdheiuKKuPf9mDcqKg==' crossorigin='anonymous' referrerpolicy='no-referrer'></script>
+  <script src='../node_modules/node-mermaid/store/client/app-transport-channel.js'></script>
+  <script src='../node_modules/node-mermaid/store/client/bluetooth-devices.js'></script>
+  <script src='../node_modules/node-mermaid/store/client/str2ab.js'></script>
+  <script src='../node_modules/node-mermaid/store/client/queue.js'></script>
+  <script src='libs/sleep.js'></script>
+  <title>Ble TIP</title>
+</head>
+<body>
+  <div>
+    <div id='status'>Device: disconnect</div>
+  </div>
+  <script>
+    const status = document.querySelector('#status')
+
+    const bluetoothDevices = new BluetoothDevices([
+      {
+        filters: [{
+          namePrefix: "toy_",
+          services: ['4fafc201-1fb5-459e-8fcc-c5c9c331914f']
+        }]
+      }
+    ])
+
+    bluetoothDevices.status(connect => {
+      console.log(connect)
+      status.innerHTML = 'Device: ' + (connect[0]  ? 'connect' : 'disconnect')
+    })
+
+    window.callDevice = () => { /* wait connect */ return false }
+
+    bluetoothDevices.connect(async (device, filter, reconnect) => {
+      if (device) {
+        console.log(filter + ' - ' + device.name)
+
+        const server = await device.gatt.connect()
+            , service = await server.getPrimaryService('4fafc201-1fb5-459e-8fcc-c5c9c331914f')
+            , characteristic = await service.getCharacteristic('beb5483e-36e1-4688-b7f5-ea07361b26a7')
+
+        const gattserverdisconnectedHandler = () => {
+          device.removeEventListener('gattserverdisconnected', gattserverdisconnectedHandler)
+
+          console.log('disconnected ' + filter + ' - ' + device.name)
+          reconnect(filter)
+        }
+
+        device.addEventListener('gattserverdisconnected', gattserverdisconnectedHandler)
+
+        callDevice = async vibrationSpeed => {
+          try {
+            if (device.gatt.connected) {
+              const data = str2ab(vibrationSpeed.toString())
+              characteristic.writeValue(data)
+              await sleep(50)
+              return true
+            } else {
+              return false
+            }
+          } catch (e) {
+            return false
+          }
+        }
+      } else{
+        console.log('not found device ' + filter)
+        reconnect(filter)
+      }
+    })
+
+    // bluetoothDevices.disconnect()
+    // bluetoothDevices.reconnect()
+
+    const pattern_more = async (tip) => {
+      for (let i = 1; i < 11; i++) {
+        await callDevice(i)
+        await sleep(tip * 30)
+      }
+      for (let i = 10; i > -1; i--) {
+        await callDevice(i)
+        await sleep(tip * 30)
+      }
+    }
+
+    const pattern_easy = async () => {
+      await callDevice(100)
+      await sleep(5000)
+      await callDevice(0)
+      await sleep(5000)
+    }
+
+    const queue = new Queue()
+
+    queue.executer(async (data, next) => {
+      if (data === 1) {
+        await pattern_easy()
+        next()
+      }
+
+      if (data > 1) {
+        await pattern_more(data)
+        next()
+      }
+    })
+
+    const AppTransportChannel = MermaidAppTransportChannel()
+
+    AppTransportChannel.on('connect', async () => {
+      AppTransportChannel.on('readData', async ({ type, data }) => {
+        if (type === 'reload') {
+          localStorage.clear()
+          window.location.reload()
+        }
+
+        if (type === 'tip') {
+          queue.add(data.count)
+        }
+      })
+    })
+  </script>
+</body>
+</html>

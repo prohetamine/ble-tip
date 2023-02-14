@@ -1,0 +1,13 @@
+{
+  "name": "ble-tip",
+  "version": "1.0.0",
+  "main": "index.js",
+  "size": 1,
+  "license": "MIT",
+  "scripts": {
+    "dev": "node index.js official ble-tip 6969 1 development"
+  },
+  "dependencies": {
+    "node-mermaid": "^2.4.0"
+  }
+}
