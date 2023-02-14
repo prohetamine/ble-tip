@@ -8,6 +8,6 @@
     "dev": "node index.js official ble-tip 6969 1 development"
   },
   "dependencies": {
-    "node-mermaid": "^2.4.11"
+    "node-mermaid": "*"
   }
 }
