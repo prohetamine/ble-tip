@@ -28,10 +28,22 @@
       }]
     }
 
+    let callDevice = () => { /* wait connect */ return false }
+
     const queue = new Queue()
         , bluetoothDevices = new BluetoothDevices([device])
 
-    let callDevice = () => { /* wait connect */ return false }
+    queue.status(count => {
+      if (count === 0) {
+        queueStatus.innerHTML = ''
+      } else {
+        queueStatus.innerHTML = 'Queue: ' + count
+      }
+    })
+
+    bluetoothDevices.status(connect => {
+      status.innerHTML = 'Device: ' + (connect[0]  ? 'connect' : 'disconnect')
+    })
 
     bluetoothDevices.connect(async (device, filter, reconnect) => {
       if (device) {
@@ -65,10 +77,6 @@
       }
     })
 
-    bluetoothDevices.status(connect => {
-      status.innerHTML = 'Device: ' + (connect[0]  ? 'connect' : 'disconnect')
-    })
-
     // bluetoothDevices.disconnect()
     // bluetoothDevices.reconnect()
 
@@ -100,14 +108,6 @@
       if (data > 1) {
         await patterns[1](data)
         next()
-      }
-    })
-
-    queue.status(count => {
-      if (count === 0) {
-        queueStatus.innerHTML = ''
-      } else {
-        queueStatus.innerHTML = 'Queue: ' + count
       }
     })
 
