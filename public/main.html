@@ -15,9 +15,11 @@
 <body>
   <div>
     <div id='status'>Device: disconnect</div>
+    <div id='queue'></div>
   </div>
   <script>
     const status = document.querySelector('#status')
+        , queueStatus = document.querySelector('#queue')
 
     const bluetoothDevices = new BluetoothDevices([
       {
@@ -104,6 +106,14 @@
       if (data > 1) {
         await pattern_more(data)
         next()
+      }
+    })
+
+    queue.status(count => {
+      if (count === 0) {
+        queueStatus.innerHTML = ''
+      } else {
+        queueStatus.innerHTML = 'Queue: ' + count
       }
     })
 
