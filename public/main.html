@@ -18,113 +18,117 @@
     <div id='queue'></div>
   </div>
   <script>
-    const status = document.querySelector('#status')
-        , queueStatus = document.querySelector('#queue')
+    const init = () => {
+      const status = document.querySelector('#status')
+          , queueStatus = document.querySelector('#queue')
 
-    const device = {
-      filters: [{
-        namePrefix: "toy_",
-        services: ['4fafc201-1fb5-459e-8fcc-c5c9c331914f']
-      }]
-    }
-
-    let callDevice = () => { /* wait connect */ return false }
-
-    const queue = new Queue()
-        , bluetoothDevices = new BluetoothDevices([device])
-
-    queue.status(count => {
-      if (count === 0) {
-        queueStatus.innerHTML = ''
-      } else {
-        queueStatus.innerHTML = 'Queue: ' + count
-      }
-    })
-
-    bluetoothDevices.status(connect => {
-      status.innerHTML = 'Device: ' + (connect[0]  ? 'connect' : 'disconnect')
-    })
-
-    bluetoothDevices.connect(async (device, filter, reconnect) => {
-      if (device) {
-        const server = await device.gatt.connect()
-            , service = await server.getPrimaryService('4fafc201-1fb5-459e-8fcc-c5c9c331914f')
-            , characteristic = await service.getCharacteristic('beb5483e-36e1-4688-b7f5-ea07361b26a7')
-
-        const gattserverdisconnectedHandler = () => {
-          device.removeEventListener('gattserverdisconnected', gattserverdisconnectedHandler)
-          reconnect(filter)
-        }
-
-        device.addEventListener('gattserverdisconnected', gattserverdisconnectedHandler)
-
-        callDevice = async vibrationSpeed => {
-          try {
-            if (device.gatt.connected) {
-              const data = str2ab(vibrationSpeed.toString())
-              characteristic.writeValue(data)
-              await sleep(50)
-              return true
-            } else {
-              return false
-            }
-          } catch (e) {
-            return false
-          }
-        }
-      } else{
-        reconnect(filter)
-      }
-    })
-
-    // bluetoothDevices.disconnect()
-    // bluetoothDevices.reconnect()
-
-    const patterns = [
-      async () => {
-        await callDevice(100)
-        await sleep(5000)
-        await callDevice(0)
-        await sleep(5000)
-      },
-      async (tip) => {
-        for (let i = 1; i < 11; i++) {
-          await callDevice(i)
-          await sleep(tip * 30)
-        }
-        for (let i = 10; i > -1; i--) {
-          await callDevice(i)
-          await sleep(tip * 30)
-        }
-      }
-    ]
-
-    queue.executer(async (data, next) => {
-      if (data === 1) {
-        await patterns[0]()
-        next()
+      const device = {
+        filters: [{
+          namePrefix: "toy_",
+          services: ['4fafc201-1fb5-459e-8fcc-c5c9c331914f']
+        }]
       }
 
-      if (data > 1) {
-        await patterns[1](data)
-        next()
-      }
-    })
+      let callDevice = () => { /* wait connect */ return false }
 
-    const AppTransportChannel = MermaidAppTransportChannel()
+      const queue = new Queue()
+          , bluetoothDevices = new BluetoothDevices([device])
 
-    AppTransportChannel.on('connect', async () => {
-      AppTransportChannel.on('readData', async ({ type, data }) => {
-        if (type === 'reload') {
-          localStorage.clear()
-          window.location.reload()
-        }
-
-        if (type === 'tip') {
-          queue.add(data.count)
+      queue.status(count => {
+        if (count === 0) {
+          queueStatus.innerHTML = ''
+        } else {
+          queueStatus.innerHTML = 'Queue: ' + count
         }
       })
-    })
+
+      bluetoothDevices.status(connect => {
+        status.innerHTML = 'Device: ' + (connect[0]  ? 'connect' : 'disconnect')
+      })
+
+      bluetoothDevices.connect(async (device, filter, reconnect) => {
+        if (device) {
+          const server = await device.gatt.connect()
+              , service = await server.getPrimaryService('4fafc201-1fb5-459e-8fcc-c5c9c331914f')
+              , characteristic = await service.getCharacteristic('beb5483e-36e1-4688-b7f5-ea07361b26a7')
+
+          const gattserverdisconnectedHandler = () => {
+            device.removeEventListener('gattserverdisconnected', gattserverdisconnectedHandler)
+            reconnect(filter)
+          }
+
+          device.addEventListener('gattserverdisconnected', gattserverdisconnectedHandler)
+
+          callDevice = async vibrationSpeed => {
+            try {
+              if (device.gatt.connected) {
+                const data = str2ab(vibrationSpeed.toString())
+                characteristic.writeValue(data)
+                await sleep(50)
+                return true
+              } else {
+                return false
+              }
+            } catch (e) {
+              return false
+            }
+          }
+        } else{
+          reconnect(filter)
+        }
+      })
+
+      // bluetoothDevices.disconnect()
+      // bluetoothDevices.reconnect()
+
+      const patterns = [
+        async () => {
+          await callDevice(100)
+          await sleep(5000)
+          await callDevice(0)
+          await sleep(5000)
+        },
+        async (tip) => {
+          for (let i = 1; i < 11; i++) {
+            await callDevice(i)
+            await sleep(tip * 30)
+          }
+          for (let i = 10; i > -1; i--) {
+            await callDevice(i)
+            await sleep(tip * 30)
+          }
+        }
+      ]
+
+      queue.executer(async (data, next) => {
+        if (data === 1) {
+          await patterns[0]()
+          next()
+        }
+
+        if (data > 1) {
+          await patterns[1](data)
+          next()
+        }
+      })
+
+      const AppTransportChannel = MermaidAppTransportChannel()
+
+      AppTransportChannel.on('connect', async () => {
+        AppTransportChannel.on('readData', async ({ type, data }) => {
+          if (type === 'reload') {
+            localStorage.clear()
+            window.location.reload()
+          }
+
+          if (type === 'tip') {
+            queue.add(data.count)
+          }
+        })
+      })
+    }
+
+    window.addEventListener('load', init)
   </script>
 </body>
 </html>

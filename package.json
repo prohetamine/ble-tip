@@ -1,6 +1,6 @@
 {
   "name": "ble-tip",
-  "version": "1.0.0",
+  "version": "3.0.2",
   "main": "index.js",
   "size": 1,
   "license": "MIT",
